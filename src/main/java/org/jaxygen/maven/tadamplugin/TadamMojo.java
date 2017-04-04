@@ -88,11 +88,12 @@ public class TadamMojo
             audioInputStream = AudioSystem.getAudioInputStream(isProxy);
             AudioFormat format = audioInputStream.getFormat();
             info = new DataLine.Info(Clip.class, format);
-            System.out.println("LineInfo: " + info);
+            getLog().debug("LineInfo: " + info);
             Clip clip = (Clip) AudioSystem.getLine(info);
             clip.open(audioInputStream);
             clip.start();
-            Thread.sleep(1000);
+            Thread.sleep(clip.getMicrosecondLength() / 1000 + 20);
+            
         } catch (Exception ex) {
             Logger.getLogger(TadamMojo.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
