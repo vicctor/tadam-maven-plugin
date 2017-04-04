@@ -31,7 +31,6 @@ import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 
 /**
  * Goal which touches a timestamp file.
@@ -42,21 +41,20 @@ import org.apache.maven.plugins.annotations.Parameter;
 public class TadamMojo
         extends AbstractMojo {
 
-    /**
-     * Location of the file.
-     */
-    @Parameter(defaultValue = "${project.build.directory}", property = "outputDir", required = true)
-    private File outputDirectory;
+    private static boolean hookRegistered = false;
 
     public void execute()
             throws MojoExecutionException {
-        getLog().info("Initialize TADAM plugin");
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                playSound();
-            }         
-        });
+        if (!hookRegistered) {
+            getLog().info("Initialize TADAM plugin");
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+                @Override
+                public void run() {
+                    playSound();
+                }
+            });
+            hookRegistered = true;
+        }
     }
 
     private void playSound() {
@@ -64,16 +62,17 @@ public class TadamMojo
         InputStream is = null;
         try {
             getLog().info("Done my lord!");
-            
+
             final String path = TadamMojo.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
             File jarFile = new File(path);
-            final URLClassLoader loader = new URLClassLoader(new URL[] {jarFile.toURI().toURL()});
-            
+            final URLClassLoader loader = new URLClassLoader(new URL[]{jarFile.toURI().toURL()});
+
             is = loader.getResourceAsStream(DEFAULT_SOUND_FILE_NAME);
-            
+
             InputStream isProxy = new InputStream() {
-                
+
                 InputStream is = loader.getResourceAsStream(DEFAULT_SOUND_FILE_NAME);
+
                 @Override
                 public int read() throws IOException {
                     return is.read();
@@ -82,15 +81,15 @@ public class TadamMojo
                 @Override
                 public synchronized void reset() throws IOException {
                     is = loader.getResourceAsStream(DEFAULT_SOUND_FILE_NAME);
-                }                
+                }
             };
-            
-            DataLine.Info info;            
+
+            DataLine.Info info;
             audioInputStream = AudioSystem.getAudioInputStream(isProxy);
             AudioFormat format = audioInputStream.getFormat();
             info = new DataLine.Info(Clip.class, format);
             System.out.println("LineInfo: " + info);
-            Clip clip = (Clip)AudioSystem.getLine(info);
+            Clip clip = (Clip) AudioSystem.getLine(info);
             clip.open(audioInputStream);
             clip.start();
             Thread.sleep(1000);
