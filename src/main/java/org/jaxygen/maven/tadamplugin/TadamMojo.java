@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sound.sampled.AudioFormat;
@@ -31,22 +32,28 @@ import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.jaxygen.maven.tadamplugin.utils.SoundsRegistry;
 
 /**
- * Goal which touches a timestamp file.
+ * Goal which makes a sound at the end of compilation.
  *
- * @deprecated Don't use!
  */
-@Mojo(name = "tadam", defaultPhase = LifecyclePhase.INSTALL)
+@Mojo(name = "tadam", defaultPhase = LifecyclePhase.INITIALIZE)
 public class TadamMojo
         extends AbstractMojo {
 
-    private static boolean hookRegistered = false;
 
+
+    private static SoundsRegistry soundsRegistory = new SoundsRegistry();
+    private static boolean hookRegistered = false;
+    private Date startTime;
+    
+    
     public void execute()
             throws MojoExecutionException {
         if (!hookRegistered) {
-            getLog().info("Initialize TADAM plugin");
+            startTime = new Date();
+            getLog().info("Initializing TADAM plugin, so keep easy, and wait for a sound");
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 @Override
                 public void run() {
@@ -61,17 +68,18 @@ public class TadamMojo
         AudioInputStream audioInputStream = null;
         InputStream is = null;
         try {
-            getLog().info("Done my lord!");
+            getLog().info("Done my Lord!");
 
             final String path = TadamMojo.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
             File jarFile = new File(path);
             final URLClassLoader loader = new URLClassLoader(new URL[]{jarFile.toURI().toURL()});
 
-            is = loader.getResourceAsStream(DEFAULT_SOUND_FILE_NAME);
+            final String soundFileName = soundsRegistory.getSoundByCompilationTime(startTime, new Date());
+
+            is = loader.getResourceAsStream(soundFileName);
 
             InputStream isProxy = new InputStream() {
-
-                InputStream is = loader.getResourceAsStream(DEFAULT_SOUND_FILE_NAME);
+                InputStream is = loader.getResourceAsStream(soundFileName);
 
                 @Override
                 public int read() throws IOException {
@@ -80,7 +88,7 @@ public class TadamMojo
 
                 @Override
                 public synchronized void reset() throws IOException {
-                    is = loader.getResourceAsStream(DEFAULT_SOUND_FILE_NAME);
+                    is = loader.getResourceAsStream(soundFileName);
                 }
             };
 
@@ -93,7 +101,7 @@ public class TadamMojo
             clip.open(audioInputStream);
             clip.start();
             Thread.sleep(clip.getMicrosecondLength() / 1000 + 20);
-            
+
         } catch (Exception ex) {
             Logger.getLogger(TadamMojo.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
@@ -113,7 +121,6 @@ public class TadamMojo
             }
         }
     }
-    private static final String DEFAULT_SOUND_FILE_NAME = "pssst-2.wav";
 
     public static void main(String... args) {
         try {
